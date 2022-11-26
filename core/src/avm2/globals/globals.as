@@ -157,6 +157,7 @@ include "flash/media/StageVideoAvailabilityReason.as"
 include "flash/media/VideoCodec.as"
 include "flash/media/VideoStatus.as"
 
+include "flash/net/FileFilter.as"
 include "flash/net/IDynamicPropertyOutput.as"
 include "flash/net/IDynamicPropertyWriter.as"
 include "flash/net/LocalConnection.as"

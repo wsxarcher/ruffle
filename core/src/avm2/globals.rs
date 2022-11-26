@@ -90,7 +90,6 @@ pub struct SystemClasses<'gc> {
     pub date: ClassObject<'gc>,
     pub qname: ClassObject<'gc>,
     pub sharedobject: ClassObject<'gc>,
-    pub file_filter: ClassObject<'gc>,
     pub file_reference: ClassObject<'gc>,
     pub file_reference_list: ClassObject<'gc>,
     pub mouseevent: ClassObject<'gc>,
@@ -174,7 +173,6 @@ impl<'gc> SystemClasses<'gc> {
             date: object,
             qname: object,
             sharedobject: object,
-            file_filter: object,
             file_reference: object,
             file_reference_list: object,
             mouseevent: object,
@@ -614,13 +612,6 @@ pub fn load_player_globals<'gc>(
         sharedobject,
         activation,
         flash::net::sharedobject::create_class(mc),
-        script
-    );
-
-    avm2_system_class!(
-        file_filter,
-        activation,
-        flash::net::file_filter::create_class(mc),
         script
     );
 
