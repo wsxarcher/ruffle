@@ -2,25 +2,17 @@
 
 use crate::avm2::class::{Class, ClassAttributes};
 use crate::avm2::method::{Method, NativeMethodImpl};
-use crate::avm2::object::TObject;
-use crate::avm2::traits::Trait;
 use crate::avm2::Multiname;
 use crate::avm2::{Activation, Error, Namespace, Object, QName, Value};
-use crate::display_object::DisplayObject;
-use crate::display_object::TDisplayObject;
-use crate::string::AvmString;
-use flash_lso::types::{AMFVersion, Lso};
 use gc_arena::{GcCell, MutationContext};
-use ruffle_wstr::WString;
-use std::borrow::Cow;
 
 /// Implements `flash.net.FileReference`'s instance constructor.
 fn instance_init<'gc>(
     activation: &mut Activation<'_, 'gc, '_>,
     this: Option<Object<'gc>>,
-    args: &[Value<'gc>],
+    _args: &[Value<'gc>],
 ) -> Result<Value<'gc>, Error<'gc>> {
-    if let Some(mut this) = this {
+    if let Some(this) = this {
         activation.super_init(this, &[])?;
     }
 
