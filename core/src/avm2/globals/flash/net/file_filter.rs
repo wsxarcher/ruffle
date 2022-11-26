@@ -3,16 +3,11 @@
 use crate::avm2::class::{Class, ClassAttributes};
 use crate::avm2::method::{Method, NativeMethodImpl};
 use crate::avm2::object::TObject;
-use crate::avm2::traits::Trait;
 use crate::avm2::Multiname;
 use crate::avm2::{Activation, Error, Namespace, Object, QName, Value};
-use crate::display_object::DisplayObject;
-use crate::display_object::TDisplayObject;
 use crate::string::AvmString;
-use flash_lso::types::{AMFVersion, Lso};
 use gc_arena::{GcCell, MutationContext};
 use ruffle_wstr::WString;
-use std::borrow::Cow;
 
 /// Implements `flash.net.FileFilter`'s instance constructor.
 fn instance_init<'gc>(
@@ -35,7 +30,7 @@ fn instance_init<'gc>(
             .unwrap_or(Value::Undefined)
             .coerce_to_string(activation)?;
 
-        let macType = args
+        let mac_type = args
             .get(2)
             .cloned()
             .unwrap_or(Value::Null)
@@ -51,7 +46,7 @@ fn instance_init<'gc>(
             extension.into(),
             activation,
         )?;
-        this.set_property(&Multiname::public("macType"), macType.into(), activation)?;
+        this.set_property(&Multiname::public("macType"), mac_type.into(), activation)?;
     }
 
     Ok(Value::Undefined)
@@ -71,7 +66,7 @@ pub fn description<'gc>(
     this: Option<Object<'gc>>,
     _args: &[Value<'gc>],
 ) -> Result<Value<'gc>, Error<'gc>> {
-    if let Some(this) = this {
+    if let Some(_this) = this {
         let gc = activation.context.gc_context;
         return Ok(Value::String(AvmString::new(gc, WString::new())));
     }
@@ -85,8 +80,8 @@ pub fn set_description<'gc>(
     this: Option<Object<'gc>>,
     args: &[Value<'gc>],
 ) -> Result<Value<'gc>, Error<'gc>> {
-    if let Some(mut this) = this {
-        let description = args
+    if let Some(mut _this) = this {
+        let _description = args
             .get(0)
             .cloned()
             .unwrap_or(Value::Undefined)
@@ -102,7 +97,7 @@ pub fn extension<'gc>(
     this: Option<Object<'gc>>,
     _args: &[Value<'gc>],
 ) -> Result<Value<'gc>, Error<'gc>> {
-    if let Some(this) = this {
+    if let Some(_this) = this {
         let gc = activation.context.gc_context;
         return Ok(Value::String(AvmString::new(gc, WString::new())));
     }
@@ -116,8 +111,8 @@ pub fn set_extension<'gc>(
     this: Option<Object<'gc>>,
     args: &[Value<'gc>],
 ) -> Result<Value<'gc>, Error<'gc>> {
-    if let Some(mut this) = this {
-        let extension = args
+    if let Some(mut _this) = this {
+        let _extension = args
             .get(0)
             .cloned()
             .unwrap_or(Value::Undefined)
@@ -128,12 +123,12 @@ pub fn set_extension<'gc>(
 }
 
 /// Implements `FileFilter.macType`'s getter.
-pub fn macType<'gc>(
+pub fn mac_type<'gc>(
     activation: &mut Activation<'_, 'gc, '_>,
     this: Option<Object<'gc>>,
     _args: &[Value<'gc>],
 ) -> Result<Value<'gc>, Error<'gc>> {
-    if let Some(this) = this {
+    if let Some(_this) = this {
         let gc = activation.context.gc_context;
         return Ok(Value::String(AvmString::new(gc, WString::new())));
     }
@@ -142,13 +137,13 @@ pub fn macType<'gc>(
 }
 
 /// Implements `FileFilter.macType`'s setter.
-pub fn set_macType<'gc>(
+pub fn set_mac_type<'gc>(
     activation: &mut Activation<'_, 'gc, '_>,
     this: Option<Object<'gc>>,
     args: &[Value<'gc>],
 ) -> Result<Value<'gc>, Error<'gc>> {
-    if let Some(mut this) = this {
-        let macType = args
+    if let Some(mut _this) = this {
+        let _mac_type = args
             .get(0)
             .cloned()
             .unwrap_or(Value::Undefined)
@@ -177,7 +172,7 @@ pub fn create_class<'gc>(mc: MutationContext<'gc, '_>) -> GcCell<'gc, Class<'gc>
     )] = &[
         ("description", Some(description), Some(set_description)),
         ("extension", Some(extension), Some(set_extension)),
-        ("macType", Some(macType), Some(set_macType)),
+        ("macType", Some(mac_type), Some(set_mac_type)),
     ];
     write.define_public_builtin_instance_properties(mc, PUBLIC_INSTANCE_PROPERTIES);
 
