@@ -36,16 +36,28 @@ fn instance_init<'gc>(
             .unwrap_or(Value::Null)
             .coerce_to_string(activation)?;
 
+        let description_property_str = AvmString::concat(
+            activation.context.gc_context,
+            AvmString::concat(
+                activation.context.gc_context,
+                AvmString::concat(activation.context.gc_context, description, " (".into()),
+                extension,
+            ),
+            ")".into(),
+        );
+
         this.set_property(
             &Multiname::public("description"),
-            description.into(),
+            description_property_str.into(),
             activation,
         )?;
+
         this.set_property(
             &Multiname::public("extension"),
             extension.into(),
             activation,
         )?;
+
         this.set_property(&Multiname::public("macType"), mac_type.into(), activation)?;
     }
 
