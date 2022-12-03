@@ -16,7 +16,7 @@ package flash.net
 
         public function browse(typeFilter:Array = null):Boolean
         {
-            return false;
+            throw new Error("FileReferenceList.browse() is not yet implemented!");
         }
     }
 }

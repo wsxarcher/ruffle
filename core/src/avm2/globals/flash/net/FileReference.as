@@ -60,31 +60,31 @@ package flash.net
         }   
 
         public function cancel():void { 
-
+            throw new Error("FileReference.cancel() is not yet implemented!");
         }   
 
         public function download(request:URLRequest, defaultFileName:String = null):void {  
-
+            throw new Error("FileReference.download() is not yet implemented!");
         }   
 
         public function load():void {   
-
+            throw new Error("FileReference.load() is not yet implemented!");
         }   
 
         public function requestPermission():void {  
-
+            throw new Error("FileReference.requestPermission() is not yet implemented!");
         }   
 
         public function save(data:*, defaultFileName:String = null):void {  
-
+            throw new Error("FileReference.save() is not yet implemented!");
         }   
 
         public function upload(request:URLRequest, uploadDataFieldName:String = "Filedata", testUpload:Boolean = false):void {  
-
+            throw new Error("FileReference.upload() is not yet implemented!");
         }   
 
         public function uploadUnencoded(request:URLRequest):void {  
-
+            throw new Error("FileReference.uploadUnencoded() is not yet implemented!");
         }
     }
 }
