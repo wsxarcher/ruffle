@@ -109,14 +109,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Clone Ruffle repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: stable
-          target: ${{ matrix.target }}
+          targets: ${{ matrix.target }}
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
@@ -125,10 +124,7 @@ jobs:
           sudo apt install -y libasound2-dev libxcb-shape0-dev libxcb-xfixes0-dev libgtk-3-dev
 
       - name: Cargo build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --package ruffle_desktop --release ${{matrix.DESKTOP_FEATURES && '--features' }} ${{matrix.DESKTOP_FEATURES}} ${{ matrix.target && '--target' }} ${{ matrix.target }}
+        run: cargo build --package ruffle_desktop --release ${{matrix.DESKTOP_FEATURES && '--features' }} ${{matrix.DESKTOP_FEATURES}} ${{ matrix.target && '--target' }} ${{ matrix.target }}
         env:
           RUSTFLAGS: ${{ matrix.RUSTFLAGS }}
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
@@ -166,10 +162,7 @@ jobs:
 
       - name: Build Safari Web Extension stub binary
         if: runner.os == 'macOS'
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --package ruffle_web_safari --release ${{ matrix.target && '--target' }} ${{ matrix.target }}
+        run: cargo build --package ruffle_web_safari --release ${{ matrix.target && '--target' }} ${{ matrix.target }}
         env:
           RUSTFLAGS: ${{ matrix.RUSTFLAGS }}
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
@@ -192,7 +185,7 @@ jobs:
       PACKAGE_FILE: ${{ needs.create-nightly-release.outputs.package_prefix }}-macos-universal.tar.gz
     steps:
       - name: Clone Ruffle repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Download aarch64 binary
         uses: actions/download-artifact@v2
@@ -297,17 +290,16 @@ jobs:
         demo: [false, true]
     steps:
       - name: Clone Ruffle repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: stable
-          target: wasm32-unknown-unknown
+          targets: wasm32-unknown-unknown
 
       - name: Setup Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: "16"
           registry-url: https://registry.npmjs.org
@@ -315,10 +307,7 @@ jobs:
       # wasm-bindgen-cli version must match wasm-bindgen crate version.
       # Be sure to update in test_web.yml, web/Cargo.toml and web/README.md.
       - name: Install wasm-bindgen
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: wasm-bindgen-cli --version 0.2.83
+        run: cargo install wasm-bindgen-cli --version 0.2.83
 
       - name: Setup conda
         uses: conda-incubator/setup-miniconda@v2
@@ -424,7 +413,7 @@ jobs:
 
       - name: Clone web demo
         if: matrix.demo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: ruffle-rs/demo
           path: demo
@@ -459,7 +448,7 @@ jobs:
 
       - name: Clone JS docs
         if: ${{ !matrix.demo }}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: ruffle-rs/js-docs
           path: js-docs
@@ -498,7 +487,7 @@ jobs:
     runs-on: ubuntu-22.04
     if: github.repository == 'ruffle-rs/ruffle'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Get current time with dashes
         uses: 1466587594/get-current-time@v2
