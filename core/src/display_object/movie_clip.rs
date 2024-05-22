@@ -4117,7 +4117,7 @@ impl<'gc, 'a> MovieClipData<'gc> {
 
         library.export_characters().iter().for_each(|(name, id)| {
             let character = library.character_by_id(*id).unwrap();
-            map.insert(name.clone(), (*id, character.clone()));
+            map.insert(name, (*id, character.clone()));
         });
         map
     }
@@ -4136,7 +4136,7 @@ impl<'gc, 'a> MovieClipData<'gc> {
                     let id = *id;
                     if self_library.character_by_id(id).is_none() {
                         self_library.register_character(id, character.clone());
-                        self_library.register_export(id, name.clone());
+                        self_library.register_export(id, *name);
                     }
                 });
         }
@@ -4235,9 +4235,9 @@ impl<'gc, 'a> MovieClipData<'gc> {
                 return Ok(character.clone());
             }
         }
-        return Err(Error::InvalidSwf(swf::error::Error::invalid_data(
+        Err(Error::InvalidSwf(swf::error::Error::invalid_data(
             "message",
-        )));
+        )))
     }
 
     fn register_export(
@@ -4248,7 +4248,7 @@ impl<'gc, 'a> MovieClipData<'gc> {
         movie: Arc<SwfMovie>,
     ) {
         let library = context.library.library_for_movie_mut(movie);
-        library.register_export(id, name.clone());
+        library.register_export(id, *name);
 
         // TODO: do other types of Character need to know their exported name?
         if let Some(character) = library.character_by_id(id) {
@@ -4258,7 +4258,7 @@ impl<'gc, 'a> MovieClipData<'gc> {
                     .read()
                     .static_data
                     .exported_name
-                    .write(context.gc_context) = Some(name.clone());
+                    .write(context.gc_context) = Some(*name);
             } else {
                 tracing::warn!(
                     "Registering export for non-movie clip: {} (ID: {})",
