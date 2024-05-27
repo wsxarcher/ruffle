@@ -8,7 +8,7 @@ mod navigator;
 mod storage;
 mod ui;
 
-use js_sys::{Array, Error as JsError, Function, Object, Promise, Uint8Array};
+use js_sys::{Array, Error as JsError, Object, Promise, Uint8Array};
 use ruffle_core::backend::navigator::OpenURLMode;
 use ruffle_core::backend::ui::FontDefinition;
 use ruffle_core::compatibility_rules::CompatibilityRules;
@@ -1506,10 +1506,7 @@ pub enum RuffleInstanceError {
     InstanceNotFound,
 }
 
-struct JavascriptMethod {
-    this: JsValue,
-    function: JsValue,
-}
+struct JavascriptMethod(String);
 
 impl ExternalInterfaceMethod for JavascriptMethod {
     fn call(&self, context: &mut UpdateContext<'_, '_>, args: &[ExternalValue]) -> ExternalValue {
@@ -1520,19 +1517,17 @@ impl ExternalInterfaceMethod for JavascriptMethod {
                 )
             } as *mut UpdateContext))
         });
-        let result = if let Some(function) = self.function.dyn_ref::<Function>() {
-            let args_array = Array::new();
-            for arg in args {
-                args_array.push(&external_to_js_value(arg.to_owned()));
-            }
-            if let Ok(result) = function.apply(&self.this, &args_array) {
-                js_to_external_value(&result)
-            } else {
-                ExternalValue::Undefined
-            }
+        let args = args
+            .iter()
+            .cloned()
+            .map(external_to_js_value)
+            .collect::<Vec<_>>();
+        let result = if let Ok(result) = call_external_interface(&self.0, args.into_boxed_slice()) {
+            js_to_external_value(&result)
         } else {
             ExternalValue::Undefined
         };
+
         CURRENT_CONTEXT.with(|v| v.replace(old_context));
         result
     }
@@ -1540,49 +1535,22 @@ impl ExternalInterfaceMethod for JavascriptMethod {
 
 #[wasm_bindgen(raw_module = "./ruffle-imports")]
 extern "C" {
-    #[wasm_bindgen(catch, js_name = "getProperty")]
-    pub fn get_property(target: &JsValue, key: &JsValue) -> Result<JsValue, JsValue>;
+    #[wasm_bindgen(catch, js_name = "callExternalInterface")]
+    pub fn call_external_interface(
+        method: &str,
+        values: Box<[JsValue]>,
+    ) -> Result<JsValue, JsValue>;
 }
 
 impl JavascriptInterface {
     fn new(js_player: JavascriptPlayer) -> Self {
         Self { js_player }
     }
-
-    fn find_method(&self, root: JsValue, name: &str) -> Option<JavascriptMethod> {
-        let mut parent = JsValue::UNDEFINED;
-        let mut value = root;
-        for key in name.split('.') {
-            parent = value;
-            value = get_property(&parent, &JsValue::from_str(key)).ok()?;
-        }
-        if value.is_function() {
-            Some(JavascriptMethod {
-                this: parent,
-                function: value,
-            })
-        } else {
-            None
-        }
-    }
 }
 
 impl ExternalInterfaceProvider for JavascriptInterface {
     fn get_method(&self, name: &str) -> Option<Box<dyn ExternalInterfaceMethod>> {
-        if let Some(method) = self.find_method(self.js_player.clone().into(), name) {
-            return Some(Box::new(method));
-        }
-        if let Some(window) = web_sys::window() {
-            if let Some(method) = self.find_method(window.into(), name) {
-                return Some(Box::new(method));
-            }
-        }
-
-        // Return a dummy method, as `ExternalInterface.call` must return `undefined`, not `null`.
-        Some(Box::new(JavascriptMethod {
-            this: JsValue::UNDEFINED,
-            function: JsValue::UNDEFINED,
-        }))
+        Some(Box::new(JavascriptMethod(name.to_string())))
     }
 
     fn on_callback_available(&self, name: &str) {
