@@ -59,79 +59,62 @@ pub fn winit_to_ruffle_text_control(
 
 /// Convert a winit event into a Ruffle `KeyCode`.
 /// Return `KeyCode::Unknown` if there is no matching Flash key code.
-pub fn winit_to_ruffle_key_code(event: &KeyEvent) -> KeyCode {
-    match event.logical_key.as_ref() {
+pub fn winit_to_ruffle_key_code(event: &KeyEvent) -> Option<KeyCode> {
+    // Note: it would be tempting to use event.key_without_modifiers() here, but FP
+    // does not care about keys without modifiers at all, it does its own mapping,
+    // so that on English UK, Shift+3 produces 16+163, not 16+51.
+
+    let is_numpad = event.location == KeyLocation::Numpad;
+    let key_code = match event.logical_key.as_ref() {
         Key::Named(NamedKey::Backspace) => KeyCode::Backspace,
         Key::Named(NamedKey::Tab) => KeyCode::Tab,
         Key::Named(NamedKey::Enter) => KeyCode::Return,
         Key::Named(NamedKey::Shift) => KeyCode::Shift,
         Key::Named(NamedKey::Control) => KeyCode::Control,
         Key::Named(NamedKey::Alt) => KeyCode::Alt,
+        // AltGr is ignored by FP
+        Key::Named(NamedKey::AltGraph) => return None,
         Key::Named(NamedKey::CapsLock) => KeyCode::CapsLock,
         Key::Named(NamedKey::Escape) => KeyCode::Escape,
         Key::Named(NamedKey::Space) => KeyCode::Space,
-        Key::Character("0") if event.location == KeyLocation::Numpad => KeyCode::Numpad0,
-        Key::Character("1") if event.location == KeyLocation::Numpad => KeyCode::Numpad1,
-        Key::Character("2") if event.location == KeyLocation::Numpad => KeyCode::Numpad2,
-        Key::Character("3") if event.location == KeyLocation::Numpad => KeyCode::Numpad3,
-        Key::Character("4") if event.location == KeyLocation::Numpad => KeyCode::Numpad4,
-        Key::Character("5") if event.location == KeyLocation::Numpad => KeyCode::Numpad5,
-        Key::Character("6") if event.location == KeyLocation::Numpad => KeyCode::Numpad6,
-        Key::Character("7") if event.location == KeyLocation::Numpad => KeyCode::Numpad7,
-        Key::Character("8") if event.location == KeyLocation::Numpad => KeyCode::Numpad8,
-        Key::Character("9") if event.location == KeyLocation::Numpad => KeyCode::Numpad9,
-        Key::Character("0") => KeyCode::Key0,
-        Key::Character("1") => KeyCode::Key1,
-        Key::Character("2") => KeyCode::Key2,
-        Key::Character("3") => KeyCode::Key3,
-        Key::Character("4") => KeyCode::Key4,
-        Key::Character("5") => KeyCode::Key5,
-        Key::Character("6") => KeyCode::Key6,
-        Key::Character("7") => KeyCode::Key7,
-        Key::Character("8") => KeyCode::Key8,
-        Key::Character("9") => KeyCode::Key9,
-        Key::Character("a") => KeyCode::A,
-        Key::Character("b") => KeyCode::B,
-        Key::Character("c") => KeyCode::C,
-        Key::Character("d") => KeyCode::D,
-        Key::Character("e") => KeyCode::E,
-        Key::Character("f") => KeyCode::F,
-        Key::Character("g") => KeyCode::G,
-        Key::Character("h") => KeyCode::H,
-        Key::Character("i") => KeyCode::I,
-        Key::Character("j") => KeyCode::J,
-        Key::Character("k") => KeyCode::K,
-        Key::Character("l") => KeyCode::L,
-        Key::Character("m") => KeyCode::M,
-        Key::Character("n") => KeyCode::N,
-        Key::Character("o") => KeyCode::O,
-        Key::Character("p") => KeyCode::P,
-        Key::Character("q") => KeyCode::Q,
-        Key::Character("r") => KeyCode::R,
-        Key::Character("s") => KeyCode::S,
-        Key::Character("t") => KeyCode::T,
-        Key::Character("u") => KeyCode::U,
-        Key::Character("v") => KeyCode::V,
-        Key::Character("w") => KeyCode::W,
-        Key::Character("x") => KeyCode::X,
-        Key::Character("y") => KeyCode::Y,
-        Key::Character("z") => KeyCode::Z,
-        Key::Character(";") => KeyCode::Semicolon,
-        Key::Character("=") => KeyCode::Equals,
-        Key::Character(",") => KeyCode::Comma,
-        Key::Character("-") if event.location == KeyLocation::Numpad => KeyCode::NumpadMinus,
-        Key::Character("-") => KeyCode::Minus,
-        Key::Character(".") if event.location == KeyLocation::Numpad => KeyCode::NumpadPeriod,
-        Key::Character(".") => KeyCode::Period,
-        Key::Character("/") if event.location == KeyLocation::Numpad => KeyCode::NumpadSlash,
-        Key::Character("/") => KeyCode::Slash,
-        Key::Character("`") => KeyCode::Grave,
-        Key::Character("[") => KeyCode::LBracket,
-        Key::Character("\\") => KeyCode::Backslash,
-        Key::Character("]") => KeyCode::RBracket,
-        Key::Character("'") => KeyCode::Apostrophe,
-        Key::Character("*") => KeyCode::Multiply,
-        Key::Character("+") => KeyCode::Plus,
+        // Note: FP DOES care about modifiers for numpad keys,
+        // so that Shift+Numpad7 produces 16+36, not 16+103.
+        Key::Character("0") if is_numpad => KeyCode::Numpad0,
+        Key::Character("1") if is_numpad => KeyCode::Numpad1,
+        Key::Character("2") if is_numpad => KeyCode::Numpad2,
+        Key::Character("3") if is_numpad => KeyCode::Numpad3,
+        Key::Character("4") if is_numpad => KeyCode::Numpad4,
+        Key::Character("5") if is_numpad => KeyCode::Numpad5,
+        Key::Character("6") if is_numpad => KeyCode::Numpad6,
+        Key::Character("7") if is_numpad => KeyCode::Numpad7,
+        Key::Character("8") if is_numpad => KeyCode::Numpad8,
+        Key::Character("9") if is_numpad => KeyCode::Numpad9,
+        Key::Character("*") if is_numpad => KeyCode::Multiply,
+        Key::Character("+") if is_numpad => KeyCode::Plus,
+        Key::Character("-") if is_numpad => KeyCode::NumpadMinus,
+        Key::Character(".") if is_numpad => KeyCode::NumpadPeriod,
+        Key::Character("/") if is_numpad => KeyCode::NumpadSlash,
+        Key::Character("0") | Key::Character(")") => KeyCode::Key0,
+        Key::Character("1") | Key::Character("!") => KeyCode::Key1,
+        Key::Character("2") | Key::Character("@") => KeyCode::Key2,
+        Key::Character("3") | Key::Character("#") => KeyCode::Key3,
+        Key::Character("4") | Key::Character("$") => KeyCode::Key4,
+        Key::Character("5") | Key::Character("%") => KeyCode::Key5,
+        Key::Character("6") | Key::Character("^") => KeyCode::Key6,
+        Key::Character("7") | Key::Character("&") => KeyCode::Key7,
+        Key::Character("8") | Key::Character("*") => KeyCode::Key8,
+        Key::Character("9") | Key::Character("(") => KeyCode::Key9,
+        Key::Character(";") | Key::Character(":") => KeyCode::Semicolon,
+        Key::Character("=") | Key::Character("+") => KeyCode::Equals,
+        Key::Character(",") | Key::Character("<") => KeyCode::Comma,
+        Key::Character("-") | Key::Character("_") => KeyCode::Minus,
+        Key::Character(".") | Key::Character(">") => KeyCode::Period,
+        Key::Character("/") | Key::Character("?") => KeyCode::Slash,
+        Key::Character("`") | Key::Character("~") => KeyCode::Grave,
+        Key::Character("[") | Key::Character("{") => KeyCode::LBracket,
+        Key::Character("\\") | Key::Character("|") => KeyCode::Backslash,
+        Key::Character("]") | Key::Character("}") => KeyCode::RBracket,
+        Key::Character("'") | Key::Character("\"") => KeyCode::Apostrophe,
         Key::Named(NamedKey::PageUp) => KeyCode::PgUp,
         Key::Named(NamedKey::PageDown) => KeyCode::PgDown,
         Key::Named(NamedKey::End) => KeyCode::End,
@@ -169,8 +152,36 @@ pub fn winit_to_ruffle_key_code(event: &KeyEvent) -> KeyCode {
         Key::Named(NamedKey::F22) => KeyCode::F22,
         Key::Named(NamedKey::F23) => KeyCode::F23,
         Key::Named(NamedKey::F24) => KeyCode::F24,
+        Key::Character(char) => {
+            // Handle alphabetic characters
+            alpha_to_ruffle_key_code(char).unwrap_or(KeyCode::Unknown)
+        }
         _ => KeyCode::Unknown,
+    };
+    Some(key_code)
+}
+
+fn alpha_to_ruffle_key_code(char: &str) -> Option<KeyCode> {
+    if char.len() != 1 {
+        return None;
     }
+
+    let char = char.chars().next()?;
+
+    if char.is_ascii_alphabetic() {
+        // ASCII alphabetic characters are all mapped to
+        // their respective KeyCodes, which happen to have
+        // the same numerical value as uppercase characters.
+        return KeyCode::from_u8(char.to_ascii_uppercase() as u8);
+    }
+
+    if !char.is_ascii() {
+        // TODO Non-ASCII inputs have codes equal to their Unicode codes and yes,
+        //   they overlap with other codes, so that typing '½' and '-' both produce 189.
+        return None;
+    }
+
+    None
 }
 
 pub fn gilrs_button_to_gamepad_button(button: Button) -> Option<GamepadButton> {
