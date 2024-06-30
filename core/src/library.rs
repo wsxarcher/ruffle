@@ -495,6 +495,7 @@ impl<'gc> Library<'gc> {
                 .get_or_load_exact_device_font(&name, is_bold, is_italic, ui, renderer, gc_context)
             {
                 result.push(font);
+                break; // TODO: Return multiple fonts when it's needed.
             }
         }
 
@@ -506,6 +507,7 @@ impl<'gc> Library<'gc> {
                         .find(&name, FontType::Device, is_bold, is_italic)
                 {
                     result.push(font);
+                    break; // TODO: Return multiple fonts when it's needed.
                 }
             }
         }

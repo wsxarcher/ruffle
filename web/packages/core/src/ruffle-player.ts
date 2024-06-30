@@ -285,7 +285,7 @@ export class RufflePlayer extends HTMLElement {
         this.addVolumeControlsJavaScript(this.volumeControls);
 
         const backupSaves = <HTMLElement>(
-            this.saveManager.querySelector("#backup-saves")
+            this.saveManager.querySelector(".modal-button")
         );
         if (backupSaves) {
             backupSaves.addEventListener("click", this.backupSaves.bind(this));
@@ -355,12 +355,14 @@ export class RufflePlayer extends HTMLElement {
      */
     private addModalJavaScript(modalElement: HTMLDivElement): void {
         const videoHolder = modalElement.querySelector("#video-holder");
-        this.container.addEventListener("click", () => {
+        const hideModal = () => {
             modalElement.classList.add("hidden");
             if (videoHolder) {
                 videoHolder.textContent = "";
             }
-        });
+        };
+
+        modalElement.parentNode!.addEventListener("click", hideModal);
         const modalArea = modalElement.querySelector(".modal-area");
         if (modalArea) {
             modalArea.addEventListener("click", (event) =>
@@ -369,12 +371,7 @@ export class RufflePlayer extends HTMLElement {
         }
         const closeModal = modalElement.querySelector(".close-modal");
         if (closeModal) {
-            closeModal.addEventListener("click", () => {
-                modalElement.classList.add("hidden");
-                if (videoHolder) {
-                    videoHolder.textContent = "";
-                }
-            });
+            closeModal.addEventListener("click", hideModal);
         }
     }
 
@@ -387,9 +384,23 @@ export class RufflePlayer extends HTMLElement {
     private addVolumeControlsJavaScript(
         volumeControlsModal: HTMLDivElement,
     ): void {
-        const muteCheckbox = volumeControlsModal.querySelector(
+        const volumeMuteCheckbox = volumeControlsModal.querySelector(
             "#mute-checkbox",
         ) as HTMLInputElement;
+        const volumeMuteIcon = volumeControlsModal.querySelector(
+            "#volume-mute",
+        ) as HTMLLabelElement;
+        const volumeIcons = [
+            volumeControlsModal.querySelector(
+                "#volume-min",
+            ) as HTMLLabelElement,
+            volumeControlsModal.querySelector(
+                "#volume-mid",
+            ) as HTMLLabelElement,
+            volumeControlsModal.querySelector(
+                "#volume-max",
+            ) as HTMLLabelElement,
+        ];
         const volumeSlider = volumeControlsModal.querySelector(
             "#volume-slider",
         ) as HTMLInputElement;
@@ -397,45 +408,40 @@ export class RufflePlayer extends HTMLElement {
             "#volume-slider-text",
         ) as HTMLSpanElement;
 
-        const heading = volumeControlsModal.querySelector(
-            "#volume-controls-heading",
-        ) as HTMLHeadingElement;
-        const muteCheckboxLabel = volumeControlsModal.querySelector(
-            "#mute-checkbox-label",
-        ) as HTMLLabelElement;
-        const volumeSliderLabel = volumeControlsModal.querySelector(
-            "#volume-slider-label",
-        ) as HTMLLabelElement;
-
-        // Add the texts.
-        heading.textContent = text("volume-controls");
-        muteCheckboxLabel.textContent = text("volume-controls-mute");
-        volumeSliderLabel.textContent = text("volume-controls-volume");
+        const setVolumeIcon = () => {
+            if (this.volumeSettings.isMuted) {
+                volumeMuteIcon.style.display = "inline";
+                volumeIcons.forEach((icon) => {
+                    icon.style.display = "none";
+                });
+            } else {
+                volumeMuteIcon.style.display = "none";
+                const iconIndex = Math.round(this.volumeSettings.volume / 50);
+                volumeIcons.forEach((icon, i) => {
+                    icon.style.display = i === iconIndex ? "inline" : "none";
+                });
+            }
+        };
 
         // Set the controls to the current settings.
-        muteCheckbox.checked = this.volumeSettings.isMuted;
-        volumeSlider.disabled = muteCheckbox.checked;
+        volumeMuteCheckbox.checked = this.volumeSettings.isMuted;
+        volumeSlider.disabled = volumeMuteCheckbox.checked;
         volumeSlider.valueAsNumber = this.volumeSettings.volume;
-        volumeSliderLabel.style.color = muteCheckbox.checked ? "grey" : "black";
-        volumeSliderText.style.color = muteCheckbox.checked ? "grey" : "black";
-        volumeSliderText.textContent = String(this.volumeSettings.volume);
+        volumeSliderText.textContent = volumeSlider.value + "%";
+        setVolumeIcon();
 
         // Add event listeners to update the settings and controls.
-        muteCheckbox.addEventListener("change", () => {
-            volumeSlider.disabled = muteCheckbox.checked;
-            volumeSliderLabel.style.color = muteCheckbox.checked
-                ? "grey"
-                : "black";
-            volumeSliderText.style.color = muteCheckbox.checked
-                ? "grey"
-                : "black";
-            this.volumeSettings.isMuted = muteCheckbox.checked;
+        volumeMuteCheckbox.addEventListener("change", () => {
+            volumeSlider.disabled = volumeMuteCheckbox.checked;
+            this.volumeSettings.isMuted = volumeMuteCheckbox.checked;
             this.instance?.set_volume(this.volumeSettings.get_volume());
+            setVolumeIcon();
         });
         volumeSlider.addEventListener("input", () => {
-            volumeSliderText.textContent = volumeSlider.value;
+            volumeSliderText.textContent = volumeSlider.value + "%";
             this.volumeSettings.volume = volumeSlider.valueAsNumber;
             this.instance?.set_volume(this.volumeSettings.get_volume());
+            setVolumeIcon();
         });
     }
 
@@ -681,7 +687,6 @@ export class RufflePlayer extends HTMLElement {
         }
 
         const [builder, zipWriterClass] = await createRuffleBuilder(
-            this.loadedConfig || {},
             this.onRuffleDownloadProgress.bind(this),
         ).catch((e) => {
             console.error(`Serious error loading Ruffle: ${e}`);
@@ -1267,6 +1272,29 @@ export class RufflePlayer extends HTMLElement {
     }
 
     /**
+     * Check if there are any saves.
+     *
+     * @returns True if there is at least one save.
+     */
+    private checkSaves(): boolean {
+        if (!this.saveManager.querySelector("#local-saves")) {
+            return false;
+        }
+        try {
+            if (localStorage === null) {
+                return false;
+            }
+        } catch (e: unknown) {
+            return false;
+        }
+        return Object.keys(localStorage).some((key) => {
+            const solName = key.split("/").pop();
+            const solData = localStorage.getItem(key);
+            return solName && solData && this.isB64SOL(solData);
+        });
+    }
+
+    /**
      * Delete local save.
      *
      * @param key The key to remove from local storage
@@ -1282,17 +1310,10 @@ export class RufflePlayer extends HTMLElement {
      * Puts the local save SOL file keys in a table.
      */
     private populateSaves(): void {
-        const saveTable = this.saveManager.querySelector("#local-saves");
-        if (!saveTable) {
+        if (!this.checkSaves()) {
             return;
         }
-        try {
-            if (localStorage === null) {
-                return;
-            }
-        } catch (e: unknown) {
-            return;
-        }
+        const saveTable = this.saveManager.querySelector("#local-saves")!;
         saveTable.textContent = "";
         Object.keys(localStorage).forEach((key) => {
             const solName = key.split("/").pop();
@@ -1304,8 +1325,9 @@ export class RufflePlayer extends HTMLElement {
                 keyCol.title = key;
                 const downloadCol = document.createElement("TD");
                 const downloadSpan = document.createElement("SPAN");
-                downloadSpan.textContent = text("save-download");
                 downloadSpan.className = "save-option";
+                downloadSpan.id = "download-save";
+                downloadSpan.title = text("save-download");
                 downloadSpan.addEventListener("click", () => {
                     const blob = this.base64ToBlob(
                         solData,
@@ -1326,8 +1348,9 @@ export class RufflePlayer extends HTMLElement {
                     document.createElement("LABEL")
                 );
                 replaceLabel.htmlFor = "replace-save-" + key;
-                replaceLabel.textContent = text("save-replace");
                 replaceLabel.className = "save-option";
+                replaceLabel.id = "replace-save";
+                replaceLabel.title = text("save-replace");
                 replaceInput.addEventListener("change", (event) =>
                     this.replaceSOL(event, key),
                 );
@@ -1335,8 +1358,9 @@ export class RufflePlayer extends HTMLElement {
                 replaceCol.appendChild(replaceLabel);
                 const deleteCol = document.createElement("TD");
                 const deleteSpan = document.createElement("SPAN");
-                deleteSpan.textContent = text("save-delete");
                 deleteSpan.className = "save-option";
+                deleteSpan.id = "delete-save";
+                deleteSpan.title = text("save-delete");
                 deleteSpan.addEventListener("click", () =>
                     this.deleteSave(key),
                 );
@@ -1386,6 +1410,7 @@ export class RufflePlayer extends HTMLElement {
      * Opens the save manager.
      */
     private async openSaveManager(): Promise<void> {
+        this.populateSaves();
         this.saveManager.classList.remove("hidden");
     }
 
@@ -1522,9 +1547,8 @@ export class RufflePlayer extends HTMLElement {
                     navigator.clipboard.writeText(this.getPanicData()),
             });
         }
-        this.populateSaves();
-        const localSaveTable = this.saveManager.querySelector("#local-saves");
-        if (localSaveTable && localSaveTable.textContent !== "") {
+
+        if (this.checkSaves()) {
             items.push({
                 text: text("context-menu-open-save-manager"),
                 onClick: this.openSaveManager.bind(this),
@@ -1606,14 +1630,15 @@ export class RufflePlayer extends HTMLElement {
     }
 
     private showContextMenu(event: MouseEvent | PointerEvent): void {
-        const modalOpen = Array.from(
-            this.shadow.querySelectorAll(".modal"),
-        ).some((modal) => !modal.classList.contains("hidden"));
-        if (this.panicked || modalOpen) {
+        if (this.panicked) {
             return;
         }
 
         event.preventDefault();
+
+        if (this.shadow.querySelectorAll(".modal:not(.hidden)").length !== 0) {
+            return;
+        }
 
         if (event.type === "contextmenu") {
             this.contextMenuSupported = true;
@@ -1688,22 +1713,29 @@ export class RufflePlayer extends HTMLElement {
             }
         }
 
-        // Place a context menu in the top-left corner, so
-        // its `clientWidth` and `clientHeight` are not clamped.
-        this.contextMenuElement.style.left = "0";
-        this.contextMenuElement.style.top = "0";
         this.contextMenuOverlay.classList.remove("hidden");
 
-        const rect = this.getBoundingClientRect();
-        const x = event.clientX - rect.x;
-        const y = event.clientY - rect.y;
-        const maxX = rect.width - this.contextMenuElement.clientWidth - 1;
-        const maxY = rect.height - this.contextMenuElement.clientHeight - 1;
+        const playerRect = this.getBoundingClientRect();
+        const contextMenuRect = this.contextMenuElement.getBoundingClientRect();
 
-        this.contextMenuElement.style.left =
-            Math.floor(Math.min(x, maxX)) + "px";
-        this.contextMenuElement.style.top =
-            Math.floor(Math.min(y, maxY)) + "px";
+        // Keep the entire context menu inside the viewport.
+        // TODO: Allow the context menu to escape the document body while being mindful of scrollbars.
+        const overflowX = Math.max(
+            0,
+            event.clientX +
+                contextMenuRect.width -
+                document.documentElement.clientWidth,
+        );
+        const overflowY = Math.max(
+            0,
+            event.clientY +
+                contextMenuRect.height -
+                document.documentElement.clientHeight,
+        );
+        const x = event.clientX - playerRect.x - overflowX;
+        const y = event.clientY - playerRect.y - overflowY;
+
+        this.contextMenuElement.style.transform = `translate(${x}px, ${y}px)`;
     }
 
     private hideContextMenu(): void {

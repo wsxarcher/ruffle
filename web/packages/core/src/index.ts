@@ -14,3 +14,4 @@ export * from "./load-options";
 export * from "./build-info";
 export * from "./swf-utils";
 export * from "./movie-metadata";
+export * from "./install";

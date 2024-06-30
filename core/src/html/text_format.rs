@@ -101,7 +101,7 @@ fn process_html_entity(src: &WStr) -> Option<WString> {
     Some(result_str)
 }
 
-#[derive(Default, Clone, Debug, Eq, PartialEq)]
+#[derive(Default, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TextDisplay {
     #[default]
     Block,
@@ -187,6 +187,7 @@ impl TextFormat {
                 Some(font.map(|font| font.descriptor().italic()).unwrap_or(false))
             },
             underline: Some(false),
+            display: Some(TextDisplay::Block),
             left_margin,
             right_margin,
             indent,
@@ -200,7 +201,6 @@ impl TextFormat {
             // TODO: These are probably empty strings by default
             url: Some(WString::new()),
             target: Some(WString::new()),
-            display: None,
         }
     }
 
@@ -360,6 +360,7 @@ pub struct TextSpan {
     pub bullet: bool,
     pub url: WString,
     pub target: WString,
+    pub display: TextDisplay,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -394,6 +395,7 @@ impl Default for TextSpan {
             bullet: false,
             url: WString::new(),
             target: WString::new(),
+            display: TextDisplay::default(),
         }
     }
 }
@@ -474,6 +476,7 @@ impl TextSpan {
             && self.bullet == rhs.bullet
             && self.url == rhs.url
             && self.target == rhs.target
+            && self.display == rhs.display
     }
 
     /// Apply a text format to this text span.
@@ -532,6 +535,10 @@ impl TextSpan {
             self.target = target.clone();
         }
 
+        if let Some(display) = tf.display {
+            self.display = display;
+        }
+
         self.font.set_text_format(tf);
     }
 
@@ -558,7 +565,7 @@ impl TextSpan {
             bullet: Some(self.bullet),
             url: Some(self.url.clone()),
             target: Some(self.target.clone()),
-            display: None, // TODO
+            display: Some(self.display),
         }
     }
 }
@@ -664,8 +671,11 @@ impl FormatSpans {
         let mut last_closed_font: Option<TextSpanFont> = None;
 
         let mut reader = Reader::from_reader(&raw_bytes[..]);
-        reader.expand_empty_elements(true);
-        reader.check_end_names(false);
+        let reader_config = reader.config_mut();
+        reader_config.expand_empty_elements = true;
+        reader_config.check_end_names = false;
+        reader_config.allow_unmatched_ends = true;
+
         loop {
             match reader.read_event() {
                 Ok(Event::Start(ref e)) => {
@@ -756,7 +766,13 @@ impl FormatSpans {
                                         Some(b'-') => format.size.map(|last_size| last_size - size),
                                         _ => Some(size),
                                     })
-                                    .map(|size| size.clamp(1.0, 127.0))
+                                    .map(|size| {
+                                        if swf_version < 13 {
+                                            size.clamp(1.0, 127.0)
+                                        } else {
+                                            size.max(1.0)
+                                        }
+                                    })
                                 {
                                     format.size = Some(size);
                                 } else {
