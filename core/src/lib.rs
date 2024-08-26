@@ -31,7 +31,7 @@ mod drawing;
 mod ecma_conversions;
 pub mod events;
 pub mod focus_tracker;
-mod font;
+pub mod font;
 mod frame_lifecycle;
 mod html;
 mod library;

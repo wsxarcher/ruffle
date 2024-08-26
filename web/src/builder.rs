@@ -12,7 +12,7 @@ use ruffle_core::backend::ui::FontDefinition;
 use ruffle_core::compatibility_rules::CompatibilityRules;
 use ruffle_core::config::{Letterbox, NetworkingAccessMode};
 use ruffle_core::{
-    swf, Color, DefaultFont, Player, PlayerBuilder, PlayerRuntime, SandboxType, StageAlign,
+    font, swf, Color, DefaultFont, Player, PlayerBuilder, PlayerRuntime, SandboxType, StageAlign,
     StageScaleMode,
 };
 use ruffle_render::backend::RenderBackend;
@@ -340,46 +340,79 @@ impl RuffleInstanceBuilder {
 impl RuffleInstanceBuilder {
     pub fn setup_fonts(&self, player: &mut Player) {
         for (font_name, bytes) in &self.custom_fonts {
-            if let Ok(swf_stream) = swf::decompress_swf(&bytes[..]) {
-                if let Ok(swf) = swf::parse_swf(&swf_stream) {
-                    let encoding = swf::SwfStr::encoding_for_version(swf.header.version());
-                    for tag in swf.tags {
-                        match tag {
-                            swf::Tag::DefineFont(_font) => {
-                                tracing::warn!("DefineFont1 tag is not yet supported by Ruffle, inside font swf {font_name}");
-                            }
-                            swf::Tag::DefineFont2(font) => {
-                                tracing::debug!(
-                                    "Loaded font {} from font swf {font_name}",
-                                    font.name.to_str_lossy(encoding)
-                                );
-                                player
-                                    .register_device_font(FontDefinition::SwfTag(*font, encoding));
-                            }
-                            swf::Tag::DefineFont4(font) => {
-                                let name = font.name.to_str_lossy(encoding);
-                                if let Some(data) = font.data {
-                                    tracing::debug!("Loaded font {name} from font swf {font_name}");
-                                    player.register_device_font(FontDefinition::FontFile {
-                                        name: name.to_string(),
-                                        is_bold: font.is_bold,
-                                        is_italic: font.is_italic,
-                                        data: data.to_vec(),
-                                        index: 0,
-                                    })
-                                } else {
-                                    tracing::warn!(
-                                        "Font {name} from font swf {font_name} contains no data"
-                                    );
+            let font_name_lower = font_name.clone().to_lowercase();
+            let extension = font_name_lower.split('.').last();
+            match extension {
+                Some("ttf") | Some("otf") | Some("ttc") => {
+                    tracing::debug!("Loading font {font_name} as TTF/OTF/TTC font");
+
+                    // Check if font collection
+                    let number_of_fonts = font::fonts_in_collection(&bytes[..]).unwrap_or(1u32);
+
+                    for i in 0u32..number_of_fonts {
+                        let name = if number_of_fonts > 1 {
+                            format!("{} {}", font_name, i + 1)
+                        } else {
+                            font_name.to_string()
+                        };
+
+                        player.register_device_font(FontDefinition::FontFile {
+                            name: name.to_string(),
+                            is_bold: false,
+                            is_italic: false,
+                            data: bytes.clone(),
+                            index: i,
+                        });
+                    }
+                }
+                _ => {
+                    // keep SWF as default font handling as originally was
+                    tracing::debug!("Loading font {font_name} as SWF font");
+                    if let Ok(swf_stream) = swf::decompress_swf(&bytes[..]) {
+                        if let Ok(swf) = swf::parse_swf(&swf_stream) {
+                            let encoding = swf::SwfStr::encoding_for_version(swf.header.version());
+                            for tag in swf.tags {
+                                match tag {
+                                    swf::Tag::DefineFont(_font) => {
+                                        tracing::warn!("DefineFont1 tag is not yet supported by Ruffle, inside font swf {font_name}");
+                                    }
+                                    swf::Tag::DefineFont2(font) => {
+                                        tracing::debug!(
+                                            "Loaded font {} from font swf {font_name}",
+                                            font.name.to_str_lossy(encoding)
+                                        );
+                                        player.register_device_font(FontDefinition::SwfTag(
+                                            *font, encoding,
+                                        ));
+                                    }
+                                    swf::Tag::DefineFont4(font) => {
+                                        let name = font.name.to_str_lossy(encoding);
+                                        if let Some(data) = font.data {
+                                            tracing::debug!(
+                                                "Loaded font {name} from font swf {font_name}"
+                                            );
+                                            player.register_device_font(FontDefinition::FontFile {
+                                                name: name.to_string(),
+                                                is_bold: font.is_bold,
+                                                is_italic: font.is_italic,
+                                                data: data.to_vec(),
+                                                index: 0,
+                                            })
+                                        } else {
+                                            tracing::warn!(
+                                                "Font {name} from font swf {font_name} contains no data"
+                                            );
+                                        }
+                                    }
+                                    _ => {}
                                 }
                             }
-                            _ => {}
+                            continue;
                         }
                     }
-                    continue;
+                    tracing::warn!("Font source {font_name} was not recognised (not a valid SWF?)");
                 }
             }
-            tracing::warn!("Font source {font_name} was not recognised (not a valid SWF?)");
         }
 
         for (default, names) in &self.default_fonts {

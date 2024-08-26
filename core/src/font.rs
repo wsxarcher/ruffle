@@ -40,6 +40,12 @@ fn round_to_pixel(t: Twips) -> Twips {
     Twips::from_pixels(t.to_pixels().round())
 }
 
+pub fn fonts_in_collection(
+    bytes: &[u8],
+) -> Option<u32> {
+    ttf_parser::fonts_in_collection(bytes)
+}
+
 /// Parameters necessary to evaluate a font.
 #[derive(Copy, Clone, Debug)]
 pub struct EvalParameters {
